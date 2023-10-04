@@ -1,0 +1,10 @@
+/** Items for openHAB used by raspiUPS-hatC-openHAB.py
+  */
+
+Group gMwBat "Batterieüberwachung" <energy> 
+Number MwBatteryCurrent "Akku Strom >0 laden, <0 entladen [%.1f mA]" <energy> (gMwBat)
+Number MwBatteryVoltage "Akku Spannung [%.2f V]" <energy> (gMwBat)
+Number MwBatteryPower  "Akku Leistung >0 laden, <0 entladen [%.1f W]" <energy> (gMwBat)
+Number MwBatterySoC  "Akku Ladestand [%.1f %%]" <energy> (gMwBat)
+Contact MwBatteryUse "Nutze Batterie [%s]" <energy> (gMwBat)
+Contact MwBatteryShutdown "Anmeldung Shutdown [MAP(susvShutdown.map):%s]" <energy> (gMwBat)

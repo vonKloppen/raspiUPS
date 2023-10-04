@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-# Battery control service, log battery state to logFile, see below
+# Battery control service, send battery state to openHAB, see below and openHAB folder
 
+import requests
 import smbus
 import time
 import syslog
@@ -8,10 +9,21 @@ import os
 
 statusCurr = "unknown"
 statusPrev = "unknown"
-checkInterval = 10
-lowTreshold = 30
-logFile = "/var/log/raspiUPS/raspiUPS.log"
+checkInterval = 30
+lowTreshold = 40
 logIdent = "raspiUPS"
+openHaburl = "http://localhost:8080"
+
+def ohSendCommand(item, value):
+    # Send Data to openHAB using http post request, good for numbers and switches, but not for contacts
+    url = openHaburl+"/rest/items/"+item 
+    data = value #str(value)
+    requests.post(url, data=data)
+
+def ohUpdateState(item,value):
+    # Send Data to openHAB using http put request, good  for contacts
+    url = openHaburl+"/rest/items/"+item+"/state"
+    requests.put(url, data=value)
 
 ## COMMUNICATION SETUP
 
@@ -102,6 +114,7 @@ def checkBattery(percentage):
     if percentage <= lowTreshold:
 
         printToLog("Battery percentage treshold (%.2f%%) reached, shutting down.." %lowTreshold)
+        ohUpdateState("MwBatteryShutdown","CLOSED")
         os.system("poweroff")
 
     else:
@@ -113,6 +126,8 @@ def checkBattery(percentage):
 if __name__=='__main__':
 
     ina219 = INA219(i2c_bus=10,addr=0x43)
+    # Initialize
+    ohUpdateState("MwBatteryShutdown","OPEN")
 
 
     while True:
@@ -123,6 +138,7 @@ if __name__=='__main__':
         try:
 
             bus_voltage = ina219.getBusVoltage_V()
+            ohSendCommand("MwBatteryVoltage",str(bus_voltage))
 
         except:
 
@@ -131,6 +147,7 @@ if __name__=='__main__':
         try:
 
             current = ina219.getCurrent_mA()
+            ohSendCommand("MwBatteryCurrent",str(current))
 
         except:
 
@@ -139,6 +156,7 @@ if __name__=='__main__':
         try:
 
             power = ina219.getPower_W()
+            ohSendCommand("MwBatteryPower",str(power))
 
         except:
 
@@ -161,6 +179,8 @@ if __name__=='__main__':
 
             battPercentage = 0
 
+        # send after corrections
+        ohSendCommand("MwBatterySoC",str(battPercentage))
 
         if current >= 0:
 
@@ -169,6 +189,7 @@ if __name__=='__main__':
             if statusCurr != statusPrev:
 
                 printToLog("Status changed: " + statusCurr)
+                ohUpdateState("MwBatteryUse","OPEN")
 
             statusPrev = "on mains"
 
@@ -179,21 +200,11 @@ if __name__=='__main__':
             if statusCurr != statusPrev:
 
                 printToLog("Status changed: " + statusCurr)
+                ohUpdateState("MwBatteryUse","CLOSED")
 
             statusPrev = "on battery"
             checkBattery(battPercentage)
 
-        try:
-
-            log = open(logFile, "a")
-
-        except:
-
-            printToLog("Error opening log file.")
-
-        else:
-
-            log.writelines(currentDate + "," + currentTime + "," + f"{bus_voltage:.1f}" + "," + f"{current:.1f}" + "," + f"{power:.1f}" + "," + f"{battPercentage:.1f}" + "\n")
         
         time.sleep(checkInterval)
 
