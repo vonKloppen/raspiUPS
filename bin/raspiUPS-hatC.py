@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import smbus
+import smbus2
 import time
 import syslog
 import os
@@ -34,7 +34,7 @@ class Mode:
 
 class INA219:
     def __init__(self, i2c_bus=1, addr=0x40):
-        self.bus = smbus.SMBus(i2c_bus);
+        self.bus = smbus2.SMBus(i2c_bus);
         self.addr = addr
 
         self._cal_value = 0
